@@ -383,6 +383,20 @@ function render() {
         </div>
         <button class="submit-btn" onclick="submitLog('${task.id}')">${t().submitBtn}</button>
         <div class="success-msg" id="msg-${task.id}">${t().submitOk}</div>
+        <div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:10px;">
+          <div class="field-label" style="margin-bottom:6px;">${lang === 'zh' ? '上传附件' : 'Upload Attachment'}</div>
+          <div onclick="document.getElementById('attach-input-${task.id}').click()"
+            style="border:2px dashed #e2e8f0;border-radius:6px;padding:10px;text-align:center;cursor:pointer;color:#94a3b8;font-size:12px;">
+            📎 ${lang === 'zh' ? '点击选择文件' : 'Click to select files'}
+            <input type="file" id="attach-input-${task.id}" multiple style="display:none"
+              onchange="handleExistingBugFiles('${task.id}', this.files)">
+          </div>
+          <div id="attach-list-${task.id}" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;"></div>
+          <button id="attach-btn-${task.id}" onclick="submitAttachment('${task.id}')"
+            class="submit-btn" style="margin-top:8px;">
+            ${lang === 'zh' ? '上传附件' : 'Upload'}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -483,6 +497,8 @@ function openNewBugModal() {
   document.getElementById('nb-reporter').value = '';
   document.getElementById('nb-due').value = '';
   document.getElementById('nb-desc').value = '';
+  document.getElementById('nb-files').value = '';
+  document.getElementById('nb-file-list').innerHTML = '';
   document.getElementById('nb-msg').style.display = 'none';
   document.getElementById('nb-submit-btn').disabled = false;
   document.getElementById('nb-submit-btn').textContent = 'Submit';
@@ -536,6 +552,12 @@ async function submitNewBug() {
     });
     const data = await res.json();
     if (data.id) {
+      // upload attachments if any
+      const files = document.getElementById('nb-files').files;
+      if (files.length > 0) {
+        btn.textContent = 'Uploading files...';
+        await uploadFilesToTask(data.id, files);
+      }
       const msg = document.getElementById('nb-msg');
       msg.textContent = '✓ Bug submitted to ClickUp';
       msg.style.display = 'block';
@@ -550,6 +572,64 @@ async function submitNewBug() {
     btn.disabled = false;
     btn.textContent = 'Submit';
   }
+}
+
+
+// ── file upload helpers ───────────────────────────────────
+async function uploadFilesToTask(taskId, files) {
+  for (const file of files) {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    try {
+      await fetch(`http://localhost:3001/api/task/${taskId}/attachment`, {
+        method: 'POST',
+        body: form
+      });
+    } catch (e) {
+      console.warn('File upload failed:', file.name, e.message);
+    }
+  }
+}
+
+function handleNewBugFiles(files) {
+  const list = document.getElementById('nb-file-list');
+  list.innerHTML = '';
+  for (const file of files) {
+    const tag = document.createElement('div');
+    tag.style.cssText = 'font-size:12px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:3px 10px;color:#334155;';
+    tag.textContent = `📄 ${file.name}`;
+    list.appendChild(tag);
+  }
+}
+
+function handleExistingBugFiles(taskId, files) {
+  const list = document.getElementById(`attach-list-${taskId}`);
+  if (!list) return;
+  list.innerHTML = '';
+  for (const file of files) {
+    const tag = document.createElement('div');
+    tag.style.cssText = 'font-size:12px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:3px 10px;color:#334155;';
+    tag.textContent = `📄 ${file.name}`;
+    list.appendChild(tag);
+  }
+}
+
+async function submitAttachment(taskId) {
+  const input = document.getElementById(`attach-input-${taskId}`);
+  if (!input.files.length) { alert('Please select a file first'); return; }
+  const btn = document.getElementById(`attach-btn-${taskId}`);
+  btn.disabled = true;
+  btn.textContent = lang === 'zh' ? '上传中...' : 'Uploading...';
+  await uploadFilesToTask(taskId, input.files);
+  btn.disabled = false;
+  btn.textContent = lang === 'zh' ? '上传附件' : 'Upload';
+  input.value = '';
+  document.getElementById(`attach-list-${taskId}`).innerHTML = '';
+  const msg = document.createElement('div');
+  msg.style.cssText = 'font-size:12px;color:#16a34a;margin-top:4px;';
+  msg.textContent = '✓ Uploaded';
+  btn.parentElement.appendChild(msg);
+  setTimeout(() => msg.remove(), 2000);
 }
 
 
