@@ -8,14 +8,36 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const CLICKUP_TOKEN = process.env.CLICKUP_TOKEN;
-const LIST_ID = process.env.CLICKUP_LIST_ID;
+const CLICKUP_TOKEN = "pk_95663353_5ACO21J32JACKIEELO9IZX4N7Z6M23GG";
+const LIST_ID = "901814891310";
 
 app.get("/api/tasks", async (req, res) => {
   try {
+    console.log("Sending request with token:", CLICKUP_TOKEN);
+console.log("List ID:", LIST_ID);
     const response = await fetch(
       `https://api.clickup.com/api/v2/list/${LIST_ID}/task?include_closed=true&subtasks=true`,
-      { headers: { Authorization: CLICKUP_TOKEN } },
+      { headers: { "Authorization": "pk_95663353_5ACO21J32JACKIEELO9IZX4N7Z6M23GG" } },
+    );
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/tasks", async (req, res) => {
+  try {
+    const response = await fetch(
+      `https://api.clickup.com/api/v2/list/${LIST_ID}/task`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: CLICKUP_TOKEN,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(req.body),
+      }
     );
     const data = await response.json();
     res.json(data);

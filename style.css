@@ -14,8 +14,8 @@ body {
 .page-title { font-size: 20px; font-weight: 700; }
 .page-sub { font-size: 13px; color: #64748b; margin-top: 2px; }
 
-.refresh-btn { padding: 6px 14px; background: #0f172a; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; }
-.refresh-btn:hover { background: #1e293b; }
+.refresh-btn, .new-bug-btn { padding: 6px 14px; background: #0f172a; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; }
+.refresh-btn:hover, .new-bug-btn:hover { background: #1e293b; }
 
 .lang-btn { padding: 6px 14px; background: #fff; color: #0f172a; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; }
 .lang-btn:hover { border-color: #94a3b8; }

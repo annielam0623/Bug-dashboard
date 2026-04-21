@@ -111,6 +111,7 @@ function toggleLang() {
   // static text
   document.getElementById('page-sub').textContent = t().pageSub;
   document.getElementById('refresh-btn').textContent = t().refresh;
+  document.getElementById('new-bug-btn').textContent = lang === 'zh' ? '＋ 新建 Bug' : '＋ New Bug';
   document.getElementById('search').placeholder = t().search;
 
   // dropdown options with data-zh / data-en
@@ -136,6 +137,14 @@ function getReason(task) {
   const opt = f.type_config?.options?.find(o => o.orderindex === f.value || o.id === f.value);
   return opt?.name || null;
 }
+
+function getWorkstream(task) {
+  const f = task.custom_fields?.find(f => f.name === 'Workstream');
+  if (!f || f.value === null || f.value === undefined) return null;
+  const opt = f.type_config?.options?.find(o => o.orderindex === f.value || o.id === f.value);
+  return opt?.name || null;
+}
+
 
 function daysAgo(ts) {
   return Math.floor((Date.now() - parseInt(ts)) / 86400000);
@@ -251,6 +260,7 @@ function render() {
   const fSev      = document.getElementById('f-severity').value;
   const fStatus   = document.getElementById('f-status').value;
   const fReason   = document.getElementById('f-reason').value;
+  const fWorkstream = document.getElementById('f-workstream').value;
   const fAssignee = document.getElementById('f-assignee').value;
   const sortBy    = document.getElementById('f-sort').value;
   const sevOrder  = { P0: 0, P1: 1, P2: 2, P3: 3 };
@@ -266,9 +276,10 @@ function render() {
       : (!fStatus || statusStr.includes(fStatus));
     return matchText
       && matchStatus
-      && (!fSev      || sev === fSev)
-      && (!fReason   || reason === fReason)
-      && (!fAssignee || assigneeNames.includes(fAssignee));
+      && (!fSev        || sev === fSev)
+      && (!fReason     || reason === fReason)
+      && (!fWorkstream || getWorkstream(t) === fWorkstream)
+      && (!fAssignee   || assigneeNames.includes(fAssignee));
   });
 
   filtered.sort((a, b) => {
@@ -296,8 +307,9 @@ function render() {
 
   el.innerHTML = `<div class="count">${t().showing(filtered.length, allTasks.length)}</div>` +
     filtered.map(task => {
-      const sev      = getSeverity(task);
-      const reason   = getReason(task);
+      const sev        = getSeverity(task);
+      const reason     = getReason(task);
+      const workstream = getWorkstream(task);
       const days     = daysAgo(task.date_created);
       const isUrgent = days > 7 && !isClosed(task);
       const assignees = task.assignees || [];
@@ -318,6 +330,7 @@ function render() {
     <div class="bug-badges">
       ${sev ? `<span class="badge ${severityClass(sev)}">${sev}</span>` : ''}
       <span class="badge ${statusClass(task.status?.status)}">${task.status?.status || '—'}</span>
+      ${workstream ? `<span class="badge b-ws">${workstream}</span>` : ''}
       ${reason ? `<span class="badge b-reason">${reason}</span>` : ''}
     </div>
     <div class="bug-title">${task.name}</div>
@@ -447,7 +460,99 @@ async function submitLog(taskId) {
   }
 }
 
-// ── load tasks ────────────────────────────────────────────
+// ── new bug modal ─────────────────────────────────────────
+function openNewBugModal() {
+  // populate assignees from loaded tasks
+  const sel = document.getElementById('nb-assignee');
+  sel.innerHTML = '<option value="">— Select —</option>';
+  const seen = new Set();
+  allTasks.forEach(t => t.assignees?.forEach(a => {
+    if (!seen.has(a.id)) {
+      seen.add(a.id);
+      const opt = document.createElement('option');
+      opt.value = a.id;
+      opt.textContent = a.username;
+      sel.appendChild(opt);
+    }
+  }));
+
+  document.getElementById('nb-title').value = '';
+  document.getElementById('nb-severity').value = '';
+  document.getElementById('nb-workstream').value = '';
+  document.getElementById('nb-assignee').value = '';
+  document.getElementById('nb-reporter').value = '';
+  document.getElementById('nb-due').value = '';
+  document.getElementById('nb-desc').value = '';
+  document.getElementById('nb-msg').style.display = 'none';
+  document.getElementById('nb-submit-btn').disabled = false;
+  document.getElementById('nb-submit-btn').textContent = 'Submit';
+
+  const modal = document.getElementById('new-bug-modal');
+  modal.style.display = 'flex';
+}
+
+function closeNewBugModal() {
+  document.getElementById('new-bug-modal').style.display = 'none';
+}
+
+async function submitNewBug() {
+  const title = document.getElementById('nb-title').value.trim();
+  if (!title) { alert('Please enter a title'); return; }
+
+  const severityVal  = document.getElementById('nb-severity').value;
+  const workstreamId = document.getElementById('nb-workstream').value;
+  const assigneeId   = document.getElementById('nb-assignee').value;
+  const reporter     = document.getElementById('nb-reporter').value.trim();
+  const dueVal       = document.getElementById('nb-due').value;
+  const desc         = document.getElementById('nb-desc').value.trim();
+
+  const fullDesc = reporter ? `[Reported by: ${reporter}]\n\n${desc}` : desc;
+
+  const body = {
+    name: title,
+    description: fullDesc,
+    assignees: assigneeId ? [parseInt(assigneeId)] : [],
+    due_date: dueVal ? new Date(dueVal).getTime() : null,
+    priority: severityVal ? parseInt(severityVal) : null,
+    custom_fields: []
+  };
+
+  if (workstreamId) {
+    body.custom_fields.push({
+      id: '564243b5-f057-4195-b0b0-fedd4164369d',
+      value: workstreamId
+    });
+  }
+
+  const btn = document.getElementById('nb-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+
+  try {
+    const res = await fetch('http://localhost:3001/api/tasks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (data.id) {
+      const msg = document.getElementById('nb-msg');
+      msg.textContent = '✓ Bug submitted to ClickUp';
+      msg.style.display = 'block';
+      setTimeout(() => { closeNewBugModal(); loadTasks(); }, 1500);
+    } else {
+      alert('Submit failed: ' + JSON.stringify(data));
+      btn.disabled = false;
+      btn.textContent = 'Submit';
+    }
+  } catch (e) {
+    alert('Submit failed: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = 'Submit';
+  }
+}
+
+
 async function loadTasks() {
   document.getElementById('bug-list').innerHTML = `<div class="loading">${t().loading}</div>`;
   try {

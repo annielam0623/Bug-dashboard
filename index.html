@@ -15,6 +15,7 @@
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <button class="lang-btn" id="lang-btn" onclick="toggleLang()">EN</button>
+        <button class="new-bug-btn" id="new-bug-btn" onclick="openNewBugModal()">＋ 新建 Bug</button>
         <button class="refresh-btn" id="refresh-btn" onclick="loadTasks()">刷新数据</button>
       </div>
     </div>
@@ -51,6 +52,15 @@
         <option value="测试遗漏" data-zh="测试遗漏" data-en="Test Gap">测试遗漏</option>
         <option value="环境与部署问题" data-zh="环境与部署问题" data-en="Env / Deploy">环境与部署问题</option>
       </select>
+      <select id="f-workstream" onchange="render()">
+        <option value="" data-zh="所有 Workstream" data-en="All Workstreams">所有 Workstream</option>
+        <option value="Hotel">Hotel</option>
+        <option value="Tour">Tour</option>
+        <option value="Activity">Activity</option>
+        <option value="OA">OA</option>
+        <option value="API">API</option>
+        <option value="Payment">Payment</option>
+      </select>
       <select id="f-assignee" onchange="render()">
         <option value="" data-zh="所有负责人" data-en="All Assignees">所有负责人</option>
       </select>
@@ -66,6 +76,69 @@
     </div>
 
   </div>
+  <!-- New Bug Modal -->
+  <div id="new-bug-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:12px;padding:28px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <div style="font-size:16px;font-weight:700;color:#0f172a;">New Bug</div>
+        <button onclick="closeNewBugModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;">✕</button>
+      </div>
+      <div class="field-wrap">
+        <div class="field-label">Title *</div>
+        <input type="text" id="nb-title" placeholder="Bug title" style="width:100%;padding:8px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;box-sizing:border-box;">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+        <div class="field-wrap">
+          <div class="field-label">Priority</div>
+          <select id="nb-severity" style="width:100%;padding:8px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+            <option value="">— Select —</option>
+            <option value="1">🔴 Urgent</option>
+            <option value="2">🟡 High</option>
+            <option value="3">🔵 Normal</option>
+            <option value="4">⚪ Low</option>
+          </select>
+        </div>
+        <div class="field-wrap">
+          <div class="field-label">Workstream</div>
+          <select id="nb-workstream" style="width:100%;padding:8px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+            <option value="">— Select —</option>
+            <option value="d07884ea-5fdd-4851-840c-b964deeaf163">Hotel</option>
+            <option value="fe3e41eb-4f5c-41fc-acc7-5924618baacb">Tour</option>
+            <option value="6d0f5780-f926-4a18-8df3-aaa9507057c1">Activity</option>
+            <option value="f42a56e6-9405-4cab-8387-4bf6fe77cbab">OA</option>
+            <option value="7659e076-726b-4efa-a684-5f95f8c12393">API</option>
+            <option value="d8b80dd8-4eeb-4677-b1d9-8f4fcb2c6f79">Payment</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+        <div class="field-wrap">
+          <div class="field-label">Assignee</div>
+          <select id="nb-assignee" style="width:100%;padding:8px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;">
+            <option value="">— Select —</option>
+          </select>
+        </div>
+        <div class="field-wrap">
+          <div class="field-label">Due Date</div>
+          <input type="date" id="nb-due" onclick="this.showPicker()" style="width:100%;padding:8px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;box-sizing:border-box;cursor:pointer;">
+        </div>
+      </div>
+      <div class="field-wrap" style="margin-top:12px;">
+        <div class="field-label">Reported By</div>
+        <input type="text" id="nb-reporter" placeholder="Your name" style="width:100%;padding:8px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;box-sizing:border-box;">
+      </div>
+      <div class="field-wrap" style="margin-top:12px;">
+        <div class="field-label">Description</div>
+        <textarea id="nb-desc" rows="3" placeholder="Describe the bug..." style="width:100%;padding:8px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+        <button onclick="closeNewBugModal()" style="padding:8px 18px;border:1px solid #e2e8f0;background:#fff;border-radius:6px;cursor:pointer;font-size:13px;color:#64748b;">Cancel</button>
+        <button onclick="submitNewBug()" id="nb-submit-btn" style="padding:8px 18px;background:#0f172a;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">Submit</button>
+      </div>
+      <div id="nb-msg" style="display:none;margin-top:12px;text-align:center;font-size:13px;color:#16a34a;"></div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>
