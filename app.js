@@ -49,7 +49,7 @@ const i18n = {
       { val: 'test passed',     label: 'TEST验证通过<br>Test Passed' },
       { val: 'complete',        label: '已上线<br>Completed' },
       { val: '已拒绝',          label: '已拒绝<br>Rejected' },
-      { val: 'backlog',         label: '转为需求<br>Moved to Backlog' },
+      { val: 'cr',              label: '转为需求<br>Moved to Backlog' },
     ],
   },
   en: {
@@ -96,7 +96,7 @@ const i18n = {
       { val: 'test passed',     label: 'Test Passed' },
       { val: 'complete',        label: 'Completed' },
       { val: '已拒绝',          label: 'Rejected' },
-      { val: 'backlog',         label: 'Moved to Backlog' },
+      { val: 'cr',              label: 'Moved to Backlog' },
     ],
   }
 };
@@ -126,15 +126,15 @@ function toggleLang() {
 // ── helpers ──────────────────────────────────────────────
 function getSeverity(task) {
   const f = task.custom_fields?.find(f => f.name === 'Bug Severity');
-  if (!f || !f.value) return null;
-  const opt = f.type_config?.options?.find(o => o.orderindex === f.value || o.id === f.value);
+  if (!f || f.value === null || f.value === undefined) return null;
+  const opt = f.type_config?.options?.find(o => o.orderindex === f.value);
   return opt?.name || null;
 }
 
 function getReason(task) {
   const f = task.custom_fields?.find(f => f.name === 'Bug原因');
-  if (!f || !f.value) return null;
-  const opt = f.type_config?.options?.find(o => o.orderindex === f.value || o.id === f.value);
+  if (!f || f.value === null || f.value === undefined) return null;
+  const opt = f.type_config?.options?.find(o => o.orderindex === f.value);
   return opt?.name || null;
 }
 
@@ -164,12 +164,14 @@ function statusClass(s) {
 }
 
 function isClosed(t) {
-  return t.status?.type === 'closed' || (t.status?.status || '').includes('已拒绝');
+  const s = (t.status?.status || '').toLowerCase();
+  return s.includes('complete') || s.includes('上线') || s.includes('已拒绝') || s.includes('cr') || s.includes('rejected');
 }
 
 // ── stat card filter ──────────────────────────────────────
 function setStatFilter(key) {
   activeStatFilter = activeStatFilter === key ? null : key;
+  activePillFilter = null;
   document.querySelectorAll('.stat').forEach(el => el.classList.remove('active'));
   if (activeStatFilter) {
     document.querySelector(`.stat[data-key="${activeStatFilter}"]`)?.classList.add('active');
