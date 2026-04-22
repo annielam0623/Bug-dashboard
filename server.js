@@ -12,16 +12,20 @@ app.use(express.json());
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-const CLICKUP_TOKEN = "pk_95663353_5ACO21J32JACKIEELO9IZX4N7Z6M23GG";
+const CLICKUP_TOKEN = process.env.CLICKUP_TOKEN;
 const LIST_ID = "901814891310";
 
 app.get("/api/tasks", async (req, res) => {
   try {
     console.log("Sending request with token:", CLICKUP_TOKEN);
-console.log("List ID:", LIST_ID);
+    console.log("List ID:", LIST_ID);
     const response = await fetch(
       `https://api.clickup.com/api/v2/list/${LIST_ID}/task?include_closed=true&subtasks=true`,
-      { headers: { "Authorization": "pk_95663353_5ACO21J32JACKIEELO9IZX4N7Z6M23GG" } },
+      {
+        headers: {
+          Authorization: CLICKUP_TOKEN,
+        },
+      },
     );
     const data = await response.json();
     res.json(data);
@@ -41,7 +45,7 @@ app.post("/api/tasks", async (req, res) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(req.body),
-      }
+      },
     );
     const data = await response.json();
     res.json(data);
@@ -83,27 +87,31 @@ app.post("/api/task/:taskId/comment", async (req, res) => {
   }
 });
 
-app.post("/api/task/:taskId/attachment", upload.single("file"), async (req, res) => {
-  try {
-    const form = new FormData();
-    form.append("attachment", req.file.buffer, {
-      filename: req.file.originalname,
-      contentType: req.file.mimetype,
-    });
-    const response = await fetch(
-      `https://api.clickup.com/api/v2/task/${req.params.taskId}/attachment`,
-      {
-        method: "POST",
-        headers: { Authorization: CLICKUP_TOKEN, ...form.getHeaders() },
-        body: form,
-      }
-    );
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+app.post(
+  "/api/task/:taskId/attachment",
+  upload.single("file"),
+  async (req, res) => {
+    try {
+      const form = new FormData();
+      form.append("attachment", req.file.buffer, {
+        filename: req.file.originalname,
+        contentType: req.file.mimetype,
+      });
+      const response = await fetch(
+        `https://api.clickup.com/api/v2/task/${req.params.taskId}/attachment`,
+        {
+          method: "POST",
+          headers: { Authorization: CLICKUP_TOKEN, ...form.getHeaders() },
+          body: form,
+        },
+      );
+      const data = await response.json();
+      res.json(data);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  },
+);
 
 app.listen(3001, () =>
   console.log("✅ Proxy running on http://localhost:3001"),

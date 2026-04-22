@@ -344,8 +344,13 @@ function render() {
     </div>
   </div>
   <div class="expand-panel" id="expand-${task.id}">
+    <div class="desc-section">
+      <div class="panel-label">Bug 描述 / Description</div>
+      <div class="desc-text">${task.text_content ? task.text_content.trim() : 'No description created for this bug'}</div>
+    </div>
     <div class="expand-grid">
       <div>
+        <div id="latest-${task.id}"></div>
         <div class="panel-label">${t().historyLabel}</div>
         <div class="comments-scroll" id="comments-${task.id}">
           <span style="font-size:13px;color:#94a3b8;">${t().commentLoading}</span>
@@ -416,7 +421,9 @@ async function toggleExpand(taskId) {
 
 async function loadComments(taskId) {
   const el = document.getElementById(`comments-${taskId}`);
+  const latestEl = document.getElementById(`latest-${taskId}`);
   el.innerHTML = `<span style="font-size:13px;color:#94a3b8;">${t().commentLoading}</span>`;
+  latestEl.innerHTML = '';
   try {
     const res = await fetch(`http://localhost:3001/api/task/${taskId}/comment`);
     const data = await res.json();
@@ -426,7 +433,28 @@ async function loadComments(taskId) {
       return;
     }
     const logLabel = lang === 'zh' ? '日报' : 'Log';
-    el.innerHTML = comments.map(c => {
+    const latest = comments[0];
+    const history = comments.slice(1);
+
+    // latest log — top of left column
+    const isLatestLog = latest.comment_text?.startsWith('📅');
+    latestEl.innerHTML = `
+<div class="latest-log-card" style="${isLatestLog ? 'border-color:#86efac;background:#f0fdf4;' : ''}">
+  <div class="comment-header">
+    ${latest.user?.profilePicture ? `<img src="${latest.user.profilePicture}" style="width:18px;height:18px;border-radius:50%;">` : ''}
+    <span class="comment-user">${latest.user?.username || '—'}</span>
+    ${isLatestLog ? `<span style="font-size:10px;background:#dcfce7;color:#166534;padding:1px 6px;border-radius:20px;border:1px solid #86efac;">${logLabel}</span>` : ''}
+    <span class="comment-date">${new Date(parseInt(latest.date)).toLocaleDateString('zh-CN')}</span>
+  </div>
+  <div class="comment-body">${latest.comment_text}</div>
+</div>`;
+
+    // history — wrap cards
+    if (!history.length) {
+      el.innerHTML = `<span style="font-size:13px;color:#94a3b8;">${t().noComment}</span>`;
+      return;
+    }
+    el.innerHTML = history.map(c => {
       const isLog = c.comment_text?.startsWith('📅');
       return `
 <div class="comment-card" style="${isLog ? 'border-color:#86efac;background:#f0fdf4;' : ''}">
